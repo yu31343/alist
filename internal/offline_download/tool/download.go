@@ -7,13 +7,14 @@ import (
 	"github.com/alist-org/alist/v3/internal/conf"
 	"github.com/alist-org/alist/v3/internal/errs"
 	"github.com/alist-org/alist/v3/internal/setting"
+	"github.com/alist-org/alist/v3/internal/task"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/xhofe/tache"
 )
 
 type DownloadTask struct {
-	tache.Base
+	task.TaskExtension
 	Url               string       `json:"url"`
 	DstDirPath        string       `json:"dst_dir_path"`
 	TempDir           string       `json:"temp_dir"`
@@ -27,6 +28,9 @@ type DownloadTask struct {
 }
 
 func (t *DownloadTask) Run() error {
+	t.ClearEndTime()
+	t.SetStartTime(time.Now())
+	defer func() { t.SetEndTime(time.Now()) }()
 	if t.tool == nil {
 		tool, err := Tools.Get(t.Toolname)
 		if err != nil {
@@ -77,6 +81,9 @@ outer:
 		return err
 	}
 	if t.tool.Name() == "pikpak" {
+		return nil
+	}
+	if t.tool.Name() == "thunder" {
 		return nil
 	}
 	if t.tool.Name() == "115 Cloud" {
@@ -130,6 +137,7 @@ func (t *DownloadTask) Update() (bool, error) {
 	}
 	t.callStatusRetried = 0
 	t.SetProgress(info.Progress)
+	t.SetTotalBytes(info.TotalBytes)
 	t.Status = fmt.Sprintf("[%s]: %s", t.tool.Name(), info.Status)
 	if info.NewGID != "" {
 		log.Debugf("followen by: %+v", info.NewGID)
@@ -156,6 +164,9 @@ func (t *DownloadTask) Complete() error {
 	if t.tool.Name() == "pikpak" {
 		return nil
 	}
+	if t.tool.Name() == "thunder" {
+		return nil
+	}
 	if t.tool.Name() == "115 Cloud" {
 		return nil
 	}
@@ -170,13 +181,18 @@ func (t *DownloadTask) Complete() error {
 	// upload files
 	for i := range files {
 		file := files[i]
-		TransferTaskManager.Add(&TransferTask{
+		tsk := &TransferTask{
+			TaskExtension: task.TaskExtension{
+				Creator: t.GetCreator(),
+			},
 			file:         file,
 			DstDirPath:   t.DstDirPath,
 			TempDir:      t.TempDir,
 			DeletePolicy: t.DeletePolicy,
 			FileDir:      file.Path,
-		})
+		}
+		tsk.SetTotalBytes(file.Size)
+		TransferTaskManager.Add(tsk)
 	}
 	return nil
 }

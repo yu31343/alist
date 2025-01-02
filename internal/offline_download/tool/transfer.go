@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/alist-org/alist/v3/internal/model"
 	"github.com/alist-org/alist/v3/internal/op"
 	"github.com/alist-org/alist/v3/internal/stream"
+	"github.com/alist-org/alist/v3/internal/task"
 	"github.com/alist-org/alist/v3/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -15,7 +17,7 @@ import (
 )
 
 type TransferTask struct {
-	tache.Base
+	task.TaskExtension
 	FileDir      string       `json:"file_dir"`
 	DstDirPath   string       `json:"dst_dir_path"`
 	TempDir      string       `json:"temp_dir"`
@@ -24,6 +26,9 @@ type TransferTask struct {
 }
 
 func (t *TransferTask) Run() error {
+	t.ClearEndTime()
+	t.SetStartTime(time.Now())
+	defer func() { t.SetEndTime(time.Now()) }()
 	// check dstDir again
 	var err error
 	if (t.file == File{}) {

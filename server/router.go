@@ -52,6 +52,9 @@ func Init(e *gin.Engine) {
 	api.POST("/auth/login/ldap", handles.LoginLdap)
 	auth.GET("/me", handles.CurrentUser)
 	auth.POST("/me/update", handles.UpdateCurrent)
+	auth.GET("/me/sshkey/list", handles.ListMyPublicKey)
+	auth.POST("/me/sshkey/add", handles.AddMyPublicKey)
+	auth.POST("/me/sshkey/delete", handles.DeleteMyPublicKey)
 	auth.POST("/auth/2fa/generate", handles.Generate2FA)
 	auth.POST("/auth/2fa/verify", handles.Verify2FA)
 	auth.GET("/auth/logout", handles.LogOut)
@@ -76,6 +79,7 @@ func Init(e *gin.Engine) {
 	public.Any("/offline_download_tools", handles.OfflineDownloadTools)
 
 	_fs(auth.Group("/fs"))
+	_task(auth.Group("/task", middlewares.AuthNotGuest))
 	admin(auth.Group("/admin", middlewares.AuthAdmin))
 	if flags.Debug || flags.Dev {
 		debug(g.Group("/debug"))
@@ -101,6 +105,8 @@ func admin(g *gin.RouterGroup) {
 	user.POST("/cancel_2fa", handles.Cancel2FAById)
 	user.POST("/delete", handles.DeleteUser)
 	user.POST("/del_cache", handles.DelUserCache)
+	user.GET("/sshkey/list", handles.ListPublicKeys)
+	user.POST("/sshkey/delete", handles.DeletePublicKey)
 
 	storage := g.Group("/storage")
 	storage.GET("/list", handles.ListStorages)
@@ -127,8 +133,8 @@ func admin(g *gin.RouterGroup) {
 	setting.POST("/set_qbit", handles.SetQbittorrent)
 	setting.POST("/set_transmission", handles.SetTransmission)
 
-	task := g.Group("/task")
-	handles.SetupTaskRoute(task)
+	// retain /admin/task API to ensure compatibility with legacy automation scripts
+	_task(g.Group("/task"))
 
 	ms := g.Group("/message")
 	ms.POST("/get", message.HttpInstance.GetHandle)
@@ -164,6 +170,10 @@ func _fs(g *gin.RouterGroup) {
 	// g.POST("/add_qbit", handles.AddQbittorrent)
 	// g.POST("/add_transmission", handles.SetTransmission)
 	g.POST("/add_offline_download", handles.AddOfflineDownload)
+}
+
+func _task(g *gin.RouterGroup) {
+	handles.SetupTaskRoute(g)
 }
 
 func Cors(r *gin.Engine) {
