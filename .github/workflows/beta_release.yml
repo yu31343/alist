@@ -54,7 +54,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - target: '!(*musl*|*windows-arm64*|*android*)' # xgo
+          - target: '!(*musl*|*windows-arm64*|*android*|*freebsd*)' # xgo
             hash: "md5"
           - target: 'linux-!(arm*)-musl*' #musl-not-arm
             hash: "md5-linux-musl"
@@ -64,6 +64,9 @@ jobs:
             hash: "md5-windows-arm64"
           - target: 'android-*' #android
             hash: "md5-android"
+          - target: 'freebsd-*' #freebsd
+            hash: "md5-freebsd"
+            
     name: Beta Release
     runs-on: ubuntu-latest
     steps:
